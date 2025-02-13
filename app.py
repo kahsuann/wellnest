@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -31,8 +31,9 @@ class Case(db.Model):
         self.description = description
 
 @app.before_request
-def create_tables():
+def initialise_database():
     db.create_all()
+
     # register clinicians
     if not Clinician.query.first():
         db.session.add_all([
@@ -60,6 +61,77 @@ def create_tables():
         ])
     
     db.session.commit()
+
+### clinician system
+
+# register
+@app.route('/register', methods=['POST'])
+def register():
+    name = request.form["name"]
+    username = request.form["username"]
+    password = request.form["password"]
+    if Clinician.query.filter_by(username=username).first():
+        return 'Username already exists, please choose another username.'
+    user = Clinician(name=name, username=username, password=password)
+    db.session.add(user)
+    db.session.commit()
+    return f'Dr. {user.name} registered successfully.'
+
+# login
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form["username"]
+    password = request.form["password"]
+    user = Clinician.query.filter_by(username=username).first()
+    if user and user.password == password:
+        return f'Welcome Dr. {user.name}, role: {user.role}'
+    return 'Login unsuccessful. Please try again.'
+    
+# promote
+@app.route('/promote', methods=['POST'])
+def promote():
+    username = request.form["username"]
+    password = request.form["password"]
+    user = Clinician.query.filter_by(username=username).first()
+    if user and user.password == password:
+        if user.role == 'Senior':
+            return f'Dr. {user.name} is already Senior.'
+        user.role = 'Senior'
+        db.session.commit()
+        return f'Dr. {user.name} successfully promoted to Senior.'
+    return 'Invalid credentials, please try again.'
+
+# demote
+@app.route('/demote', methods=['POST'])
+def demote():
+    username = request.form["username"]
+    password = request.form["password"]
+    user = Clinician.query.filter_by(username=username).first()
+    if user and user.password == password:
+        if user.role == 'Junior':
+            return f'Dr. {user.name} is already Junior.'
+        user.role = 'Junior'
+        db.session.commit()
+        return f'Dr. {user.name} successfully demoted to Junior.'
+    return 'Invalid credentials, please try again.'
+
+### therapy cases
+
+# fetch the list of all cases
+@app.route('/cases', methods=['GET'])
+def cases():
+    cases = Case.query.all()
+    return jsonify([{'name': case.name, 'description': case.description} for case in cases])
+
+# add a case
+@app.route('/case', methods=['POST'])
+def case():
+    name = request.form["name"]
+    description = request.form["description"]
+    new_case = Case(name=name, description=description)
+    db.session.add(new_case)
+    db.session.commit()
+    return 'Case added successfully'
 
 if __name__ == '__main__':
     app.run()
