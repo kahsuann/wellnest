@@ -1,7 +1,10 @@
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, request, session
 from flask_sqlalchemy import SQLAlchemy
+from datetime import timedelta
 
 app = Flask(__name__)
+app.secret_key = "wellnest"
+app.permanent_session_lifetime = timedelta(minutes=5)
 
 ### database
 
@@ -75,7 +78,7 @@ def register():
     user = Clinician(name=name, username=username, password=password)
     db.session.add(user)
     db.session.commit()
-    return f'Dr. {user.name} registered successfully.'
+    return f'Dr. {user.name} registered successfully. Please login to use WellNest Portal.'
 
 # login
 @app.route('/login', methods=['POST'])
@@ -84,8 +87,17 @@ def login():
     password = request.form["password"]
     user = Clinician.query.filter_by(username=username).first()
     if user and user.password == password:
+        session.permanent = True
+        session["user"] = username
         return f'Welcome Dr. {user.name}, role: {user.role}'
     return 'Login unsuccessful. Please try again.'
+
+# logout
+@app.route('/logout', methods=['POST'])
+def logout():
+    if "user" in session:
+        session.pop("user", None)
+    return 'Logout successful. Have a good day.'
     
 # promote
 @app.route('/promote', methods=['POST'])
@@ -120,18 +132,24 @@ def demote():
 # fetch the list of all cases
 @app.route('/cases', methods=['GET'])
 def cases():
-    cases = Case.query.all()
-    return jsonify([{'name': case.name, 'description': case.description} for case in cases])
+    if "user" in session:
+        cases = Case.query.all()
+        return jsonify([{'name': case.name, 'description': case.description} for case in cases])
+    else:
+        return 'Please first log in to view therapy cases.'
 
 # add a case
 @app.route('/case', methods=['POST'])
 def case():
-    name = request.form["name"]
-    description = request.form["description"]
-    new_case = Case(name=name, description=description)
-    db.session.add(new_case)
-    db.session.commit()
-    return 'Case added successfully'
+    if "user" in session:
+        name = request.form["name"]
+        description = request.form["description"]
+        new_case = Case(name=name, description=description)
+        db.session.add(new_case)
+        db.session.commit()
+        return f'New case added successfully. {new_case.name}: {new_case.description}'
+    else:
+        return 'Please first log in to add a new therapy case.'
 
 if __name__ == '__main__':
     app.run()
