@@ -1,13 +1,15 @@
 from flask import Flask, jsonify, request, session
+from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
 
 app = Flask(__name__)
+# session
 app.secret_key = "wellnest"
 app.permanent_session_lifetime = timedelta(minutes=5)
-
-### database
-
+# password hashing
+bcrypt = Bcrypt(app)
+# database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wellnest.db'
 db = SQLAlchemy(app)
 
@@ -21,7 +23,7 @@ class Clinician(db.Model):
     def __init__(self, name, username, password, role='Junior'):
         self.name = name
         self.username = username
-        self.password = password
+        self.password = bcrypt.generate_password_hash(password)
         self.role = role
 
 class Case(db.Model):
@@ -86,7 +88,7 @@ def login():
     username = request.form["username"]
     password = request.form["password"]
     user = Clinician.query.filter_by(username=username).first()
-    if user and user.password == password:
+    if user and bcrypt.check_password_hash(user.password, password):
         session.permanent = True
         session["user"] = username
         return f'Welcome Dr. {user.name}, role: {user.role}'
@@ -105,13 +107,13 @@ def promote():
     username = request.form["username"]
     password = request.form["password"]
     user = Clinician.query.filter_by(username=username).first()
-    if user and user.password == password:
+    if user and bcrypt.check_password_hash(user.password, password):
         if user.role == 'Senior':
             return f'Dr. {user.name} is already Senior.'
         user.role = 'Senior'
         db.session.commit()
         return f'Dr. {user.name} successfully promoted to Senior.'
-    return 'Invalid credentials, please try again.'
+    return 'Invalid user details, please try again.'
 
 # demote
 @app.route('/demote', methods=['POST'])
@@ -119,13 +121,13 @@ def demote():
     username = request.form["username"]
     password = request.form["password"]
     user = Clinician.query.filter_by(username=username).first()
-    if user and user.password == password:
+    if user and bcrypt.check_password_hash(user.password, password):
         if user.role == 'Junior':
             return f'Dr. {user.name} is already Junior.'
         user.role = 'Junior'
         db.session.commit()
         return f'Dr. {user.name} successfully demoted to Junior.'
-    return 'Invalid credentials, please try again.'
+    return 'Invalid user details, please try again.'
 
 ### therapy cases
 
