@@ -8,7 +8,9 @@ WellNest is a Flask-based back-end system for a mental health institute, designe
 - Addition and Retrieval of Therapy Cases
 
 ## Render Deployment
-URL: https://wellnest-rrpn.onrender.com
+```
+https://wellnest-rrpn.onrender.com
+```
 
 ## Requests
 - POST /register
