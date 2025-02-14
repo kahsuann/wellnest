@@ -91,7 +91,7 @@ def login():
     if user and bcrypt.check_password_hash(user.password, password):
         session.permanent = True
         session["user"] = username
-        return f'Welcome Dr. {user.name}, role: {user.role}'
+        return f'Welcome to WellNest, Dr. {user.name}.\nRole: {user.role}'
     return 'Login unsuccessful. Please try again.'
 
 # logout
