@@ -76,7 +76,7 @@ def register():
     username = request.form["username"]
     password = request.form["password"]
     if Clinician.query.filter_by(username=username).first():
-        return 'Username already exists, please choose another username.'
+        return f'{username} is not available, please choose another username.'
     user = Clinician(name=name, username=username, password=password)
     db.session.add(user)
     db.session.commit()
@@ -99,7 +99,7 @@ def login():
 def logout():
     if "user" in session:
         session.pop("user", None)
-    return 'Logout successful. Have a good day.'
+    return 'Logout successful. Have a good day!'
     
 # promote
 @app.route('/promote', methods=['POST'])
